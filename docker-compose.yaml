@@ -1,0 +1,36 @@
+version: '3.9'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: snake_game_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password  # Replace with your password
+      MYSQL_DATABASE: snake_game
+      MYSQL_USER: snake_user
+      MYSQL_PASSWORD: snake_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  app:
+    build:
+      context: ./app
+    container_name: snake_game_app
+    restart: always
+    environment:
+      FLASK_ENV: development
+      DB_HOST: db
+      DB_USER: snake_user
+      DB_PASSWORD: snake_pass
+      DB_NAME: snake_game
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+
+volumes:
+  db_data:

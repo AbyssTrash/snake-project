@@ -1,0 +1,9 @@
+CREATE DATABASE IF NOT EXISTS snake_game;
+
+USE snake_game;
+
+CREATE TABLE IF NOT EXISTS leaderboard (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    score INT NOT NULL
+);
