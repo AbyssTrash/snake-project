@@ -5,11 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Snake Game</title>
     <style>
-        canvas { border: 1px solid black; display: block; margin: auto; }
-        #leaderboard { text-align: center; }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(45deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            margin: 20px 0 5px 0;
+            font-size: 36px;
+            color: #ffd700;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+        }
+        h2 {
+            margin: 0 0 20px 0;
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+        }
+        canvas {
+            border: 5px solid white;
+            background-color: #000;
+            display: block;
+            margin: 20px auto;
+            box-shadow: 0px 0px 15px rgba(255, 255, 255, 0.7);
+        }
+        #leaderboard {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 400px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.8);
+        }
+        #leaderboard h3 {
+            margin: 0 0 10px 0;
+            color: #ffd700;
+        }
+        #scores {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        #scores li {
+            font-size: 18px;
+            padding: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
     </style>
 </head>
 <body>
+    <h1>Snake Game</h1>
+    <h2>by Eitan Podolich and Lior Levy</h2>
     <canvas id="gameCanvas" width="400" height="400"></canvas>
     <div id="leaderboard">
         <h3>Leaderboard</h3>
@@ -20,45 +69,127 @@
         const ctx = canvas.getContext('2d');
         let snake = [{ x: 200, y: 200 }];
         let direction = { x: 0, y: -10 };
-        let food = { x: 100, y: 100 };
+        let fruits = [];
+        let bombs = [];
+        let particles = [];
         let score = 0;
+        let scorePop = null;
+
+        function initGameElements() {
+            fruits = Array.from({ length: 3 }, () => generateRandomPosition());
+            bombs = Array.from({ length: 2 }, () => generateRandomPosition());
+        }
+
+        function generateRandomPosition() {
+            return { x: Math.floor(Math.random() * 40) * 10, y: Math.floor(Math.random() * 40) * 10 };
+        }
 
         function drawSnake() {
-            snake.forEach(part => {
-                ctx.fillStyle = 'green';
+            snake.forEach((part, index) => {
+                ctx.fillStyle = index === 0 ? '#FFD700' : '#32CD32'; // Head is golden, rest is green
+                ctx.strokeStyle = '#000';
                 ctx.fillRect(part.x, part.y, 10, 10);
+                ctx.strokeRect(part.x, part.y, 10, 10);
             });
         }
 
-        function drawFood() {
-            ctx.fillStyle = 'red';
-            ctx.fillRect(food.x, food.y, 10, 10);
+        function drawFruits() {
+            fruits.forEach(fruit => {
+                ctx.beginPath();
+                ctx.arc(fruit.x + 5, fruit.y + 5, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#FF4500'; // Red fruits
+                ctx.shadowColor = '#FF4500';
+                ctx.shadowBlur = 15; // Glow effect
+                ctx.fill();
+                ctx.shadowBlur = 0; // Reset shadow
+            });
+        }
+
+        function drawBombs() {
+            bombs.forEach(bomb => {
+                ctx.beginPath();
+                ctx.arc(bomb.x + 5, bomb.y + 5, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#000000'; // Black bombs
+                ctx.fill();
+                ctx.strokeStyle = '#FF0000'; // Red border for bombs
+                ctx.stroke();
+            });
+        }
+
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    radius: Math.random() * 5,
+                    color: color,
+                    velocityX: (Math.random() - 0.5) * 2,
+                    velocityY: (Math.random() - 0.5) * 2,
+                    life: 30
+                });
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach((particle, index) => {
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.radius, 0, 2 * Math.PI);
+                ctx.fillStyle = particle.color;
+                ctx.fill();
+
+                // Update particle position
+                particle.x += particle.velocityX;
+                particle.y += particle.velocityY;
+                particle.life--;
+
+                // Remove expired particles
+                if (particle.life <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
         }
 
         function moveSnake() {
             const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
             snake.unshift(head);
-            if (head.x === food.x && head.y === food.y) {
+
+            const eatenFruitIndex = fruits.findIndex(fruit => fruit.x === head.x && fruit.y === head.y);
+            if (eatenFruitIndex !== -1) {
                 score += 10;
-                placeFood();
+                fruits[eatenFruitIndex] = generateRandomPosition();
+                scorePop = { x: head.x, y: head.y, value: '+10', timer: 20 };
             } else {
                 snake.pop();
             }
         }
 
-        function placeFood() {
-            food.x = Math.floor(Math.random() * 40) * 10;
-            food.y = Math.floor(Math.random() * 40) * 10;
+        function drawScorePop() {
+            if (scorePop && scorePop.timer > 0) {
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#FFD700';
+                ctx.fillText(scorePop.value, scorePop.x, scorePop.y - scorePop.timer);
+                scorePop.timer--;
+            } else {
+                scorePop = null;
+            }
         }
 
         function checkCollision() {
             const head = snake[0];
             if (head.x < 0 || head.y < 0 || head.x >= 400 || head.y >= 400 ||
                 snake.slice(1).some(part => part.x === head.x && part.y === head.y)) {
-                alert(`Game over! Your score: ${score}`);
-                submitScore();
-                resetGame();
+                endGame();
             }
+            if (bombs.some(bomb => bomb.x === head.x && bomb.y === head.y)) {
+                createParticles(head.x + 5, head.y + 5, '#FF0000');
+                endGame();
+            }
+        }
+
+        function endGame() {
+            alert(`Game over! Your score: ${score}`);
+            submitScore();
+            resetGame();
         }
 
         function submitScore() {
@@ -74,7 +205,7 @@
             snake = [{ x: 200, y: 200 }];
             direction = { x: 0, y: -10 };
             score = 0;
-            placeFood();
+            initGameElements();
         }
 
         function fetchLeaderboard() {
@@ -100,10 +231,14 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             moveSnake();
             drawSnake();
-            drawFood();
+            drawFruits();
+            drawBombs();
+            drawParticles();
+            drawScorePop();
             checkCollision();
         }
 
+        initGameElements();
         setInterval(gameLoop, 100);
         fetchLeaderboard();
     </script>
